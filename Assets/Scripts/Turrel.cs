@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class Turrel : MonoBehaviour
 {
-    [SerializeField] private Transform _rotatePoint;
     [SerializeField] private SphereCollider _visionCollider;
     [SerializeField] private float _speedRotate;
     [SerializeField] private float _distance;
@@ -15,23 +14,62 @@ public class Turrel : MonoBehaviour
     [SerializeField] private GameObject _prefabBullet;
     [SerializeField] private Transform _shootPoint;
 
-    // Start is called before the first frame update
+
+
     void Start()
     {
         _visionCollider.radius = _distance;
     }
 
-    // Update is called once per frame
+    public float angle;
+    public float speed;
+
+    private bool readyShoot = true;
+    GameObject go;
+    Vector3 targetDir;
+    Vector3 newDir;
+
+
     void Update()
     {
-        if (_player != null)
+        if (_player == null)
+            return;
+
+        angle = Vector3.Angle(transform.parent.forward, _player.position);
+
+        if (angle <= 10)
         {
-            _rotatePoint.LookAt(_player);
+            targetDir = _player.position - transform.position;
+            newDir = Vector3.RotateTowards(transform.forward, targetDir, speed * Time.deltaTime, 0.0F);
 
-
+            transform.rotation = Quaternion.LookRotation(new Vector3(newDir.x, 0, newDir.z));
+            if (readyShoot)
+            {
+                readyShoot = false;
+                go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                go.transform.position = transform.GetChild(0).position;
+                go.transform.localScale = Vector3.one * 0.2f;
+                go.transform.LookAt(_player.position);
+                go.GetComponent<Collider>().isTrigger = true;
+                go.AddComponent<Rigidbody>().useGravity = false;
+                go.GetComponent<Rigidbody>().AddForce(go.transform.forward * 20, ForceMode.Impulse);
+                StartCoroutine(TimeShoot());
+                Destroy(go, 2);
+            }
         }
         else
-            _rotatePoint.Rotate(Vector3.up * Time.deltaTime * 50f);
+        {
+            targetDir = transform.parent.forward - transform.position;
+            newDir = Vector3.RotateTowards(transform.forward, targetDir, speed * 2 * Time.deltaTime, 0.0F);
+
+            transform.rotation = Quaternion.LookRotation(new Vector3(newDir.x, 0, newDir.z));
+        }
+    }
+
+    IEnumerator TimeShoot()
+    {
+        yield return new WaitForSeconds(1.5f);
+        readyShoot = true;
     }
 
     private void OnTriggerEnter(Collider other)
@@ -49,7 +87,4 @@ public class Turrel : MonoBehaviour
             _player = null;
         }
     }
-
-
-
 }
